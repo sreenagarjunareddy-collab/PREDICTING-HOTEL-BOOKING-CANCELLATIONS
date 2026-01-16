@@ -32,6 +32,12 @@ The Specificity Challenge: We identified a critical "class imbalance" in the ind
 
 Statistical Validation: We used AUC-ROC curves to measure the trade-off between true positives and false positives, ensuring our model was significantly more effective than random guessing.
 
+Metric,Logistic Regression,Decision Tree,Random Forest
+Accuracy,0.7333,0.7319,0.7382
+Recall,0.9828,0.9975,0.9867
+F1 Score,0.8462,0.8426,0.8445
+,,,
+
 Strategic Recommendations
 We translated these technical findings into three high-level business strategies:
 
