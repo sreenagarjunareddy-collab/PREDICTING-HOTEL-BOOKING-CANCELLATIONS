@@ -1,0 +1,443 @@
+---
+title: "DATA MINE PROJECT"
+author: "Nagarjuna"
+date: "2024-11-22"
+output: html_document
+---
+
+
+#How do factors such as booking cancellation, repeat guest status, number of special requests, Cancellation, and the number of adults influence the Average Daily Rate (ADR) in hotel bookings?
+
+#loading datasets
+```{r}
+Hotel_data <- read.csv("Dataset 20-hotel_bookings.csv", stringsAsFactor=FALSE,na.string="")
+Hotel_data.cleaned1=Hotel_data
+head(Hotel_data.cleaned1,limit=10)
+#Hotel_data.cleaned1[is.na(Hotel_data.cleaned1) | Hotel_data.cleaned1 == "NULL"] = NA
+#Hotel_data.cleaned1[is.na(Hotel_data.cleaned1) | Hotel_data.cleaned1 == "NA"] = 0
+View(Hotel_data.cleaned1)
+
+Hotel_data.cleaned1$adults <- as.numeric(as.character(Hotel_data.cleaned1$adults))
+Hotel_data.cleaned1$babies <- as.numeric(as.character(Hotel_data.cleaned1$babies))
+Hotel_data.cleaned1$children <- as.numeric(as.character(Hotel_data.cleaned1$children))
+#Hotel_data.cleaned1$total_members <- sum(Hotel_data.cleaned1$adults + Hotel_data.cleaned1$babies + Hotel_data.cleaned1$children, na.rm = TRUE)
+
+
+#Hotel_data.cleaned1$total_members<-sum[Hotel_data.cleaned1$adults+Hotel_data.cleaned1$babies+Hotel_data.cleaned1$children]
+#Hotel_data.cleaned1$babies[is.na(Hotel_data.cleaned1$babies) | Hotel_data.cleaned1$babies == "NA"] = 0
+#Hotel_data.cleaned1$children[is.na(Hotel_data.cleaned1$children) | Hotel_data.cleaned1$children == "NA"] = 0
+#Hotel_data.cleaned1$adults[is.na(Hotel_data.cleaned1$adults) | Hotel_data.cleaned1$adults == "NA"] = 0
+```
+
+#replacing null to NA
+```{r}
+Hotel_data.cleaned1[is.na(Hotel_data.cleaned1) | Hotel_data.cleaned1 == "NULL"] = NA
+
+missing_values <- colSums(is.na(Hotel_data.cleaned1))
+missing_values
+Hotel_data.cleaned1<- Hotel_data.cleaned1[!duplicated(Hotel_data.cleaned1), ]
+str(Hotel_data.cleaned1)
+```
+
+# Descriptive Statistics
+```{r}
+mean(Hotel_data.cleaned1$is_canceled) # Mean
+median(Hotel_data.cleaned1$is_canceled) # Median
+length(Hotel_data.cleaned1$is_canceled) # Number of observations
+sd(Hotel_data.cleaned1$is_canceled) # Standard deviation
+summary(Hotel_data.cleaned1$is_canceled)
+```
+
+
+# Min-max normalization
+```{r}
+mi = min(Hotel_data.cleaned1$is_canceled)
+ma = max(Hotel_data.cleaned1$is_canceled)
+(minmax.weight = (Hotel_data.cleaned1$is_canceled -
+mi)/(ma - mi))
+```
+
+
+# Z-score standarization
+```{r}
+m = mean(Hotel_data.cleaned1$is_canceled);
+s = sd(Hotel_data.cleaned1$is_canceled)
+(z.weight = (Hotel_data.cleaned1$is_canceled - m)/s)
+#z.weight
+```
+
+
+
+# Skewness
+```{r}
+(3*(mean(Hotel_data.cleaned1$is_canceled) -
+median(Hotel_data.cleaned1$is_canceled)))/sd(Hotel_data.cleaned1$is_canceled)
+(3*(mean(z.weight) -
+median(z.weight)))/sd(z.weight)
+```
+
+
+# Transformations for Normality
+```{r}
+sqrt.weight = sqrt(Hotel_data.cleaned1$is_canceled) # Square root
+sqrt.weight_skew = (3*(mean(sqrt.weight) - median(sqrt.weight))) / sd(sqrt.weight)
+ln.weight = log(Hotel_data.cleaned1$is_canceled) # Natural log
+ln.weight_skew = (3*(mean(ln.weight) - median(ln.weight))) / sd(ln.weight)
+invsqrt.weight = 1 / sqrt(Hotel_data.cleaned1$is_canceled) # Inverse square root
+invsqrt.weight_skew = (3*(mean(invsqrt.weight) - median(invsqrt.weight))) /sd(invsqrt.weight)
+```
+
+#checking duplicates
+```{r}
+duplicates <- Hotel_data.cleaned1[duplicated(Hotel_data.cleaned1), ]
+print(duplicates)
+```
+
+
+#Misclassifications
+```{r}
+summary_tables <- list(
+  A2 = table(Hotel_data.cleaned1$is_canceled),
+ A4 = table(Hotel_data.cleaned1$is_repeated_guest)
+)
+summary_tables
+```
+
+
+
+#Plots
+```{r}
+
+library(readxl)
+library(ggplot2)
+library(gridExtra)
+
+#install.packages("dplyr")
+library(dplyr)            
+
+
+filtered_data <- Hotel_data.cleaned1 %>% filter(adr <= 1000)
+
+# Histogram of ADR
+library(ggplot2)
+ggplot(filtered_data, aes(x = adr)) +
+  geom_histogram(bins = 30, fill = "blue", color = "white", alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Distribution of ADR", x = "ADR", y = "Frequency")
+
+library(ggplot2)
+ggplot(filtered_data, aes(x = is_canceled)) +
+  geom_histogram(bins = 30, fill = "blue", color = "white", alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Distribution of canceled", x = "Canceled", y = "Frequency")
+
+# Box plot of ADR vs IsCanceled
+ggplot(filtered_data, aes(x = factor(is_canceled), y = adr)) +
+  geom_boxplot(fill = "lightblue", color = "darkblue", outlier.color = "red") +
+  theme_minimal() +
+  labs(title = "ADR by Cancellation Status", x = "Is Canceled (0 = No, 1 = Yes)", y = "ADR")
+
+# Scatter plot for ADR vs Adults
+ggplot(filtered_data, aes(x = adults, y = adr)) +
+  geom_point(alpha = 0.6, color = "darkorange") +
+  theme_minimal() +
+  labs(title = "ADR vs Number of Adults", x = "Number of Adults", y = "ADR")
+
+# Box plot for ADR vs IsRepeatedGuest
+ggplot(filtered_data, aes(x = factor(is_repeated_guest), y = adr)) +
+  geom_boxplot(fill = "pink", color = "darkred", outlier.color = "blue") +
+  theme_minimal() +
+  labs(title = "ADR by Repeated Guest Status", x = "Is Repeated Guest (0 = No, 1 = Yes)", y = "ADR")
+
+
+# Scatter plot for ADR vs TotalOfSpecialRequests
+ggplot(filtered_data, aes(x = total_of_special_requests, y = adr)) +
+  geom_point(alpha = 0.6, color = "green") +
+  theme_minimal() +
+  labs(title = "ADR vs Total Special Requests", x = "Total Special Requests", y = "ADR")
+
+# Box plot for ADR by IsCanceled and Special Requests
+ggplot(filtered_data, aes(x = factor(is_canceled), y = adr, fill = factor(total_of_special_requests))) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "ADR by Cancellation Status and Special Requests", 
+       x = "Is Canceled (0 = No, 1 = Yes)", 
+       y = "ADR",
+       fill = "Special Requests")
+```
+(counts = table(Hotel_data.cleaned1$is_canceled, Hotel_data.cleaned1$is_repeated_guest, dnn=c("is_canceled")))
+
+summary(Hotel_data.cleaned1$is_canceled)
+
+sum(Hotel_data.cleaned1$is_canceled) / length(Hotel_data.cleaned1$is_canceled)
+
+# Create a bar plot of cancellations and non-cancellations
+barplot(
+  table(Hotel_data.cleaned1$is_canceled),
+  ylim = c(0, 100000),
+  main = "Bar Graph of Canceled and Non-canceled Bookings",
+  col = "lightblue",
+  xlab = "Booking Status",
+  ylab = "Count",
+  names.arg = c("Not Canceled", "Canceled")
+)
+
+
+barplot(counts, legend = rownames(counts),
+col = c("blue", "red"), ylim = c(0, 100000),
+ylab = "Count", xlab = "ard",
+main = "Comparison Bar Chart: canceled Proportions by
+ard")
+box(which = "plot", lty = "solid", col="black")
+
+addmargins(counts, FUN = sum)
+
+round(prop.table(counts, margin = 2),4)
+
+barplot(counts, col = c("blue", "red"),
+ylim = c(0, 70000), ylab = "Count",
+xlab = "Repeated Guest",
+main = "Cancelled Count by Repeated Guest",
+beside = TRUE)
+legend("topright", c(rownames(counts)), col = c("blue",
+"red"), pch = 15, title = "Cancelled")
+box(which = "plot", lty = "solid", col="black")
+
+summary(Hotel_data.cleaned1$adr)
+
+summary(Hotel_data.cleaned1$TOTAL.MEM)
+
+summary(Hotel_data.cleaned1$stays_in_week_nights)
+
+hist(Hotel_data.cleaned1$stays_in_week_nights,
+xlim = c(0,10),
+col = "lightblue",
+ylab = "Count",
+xlab = "
+Calls", main = "Histogram of
+Customer Service Calls") 
+
+
+#categorical_cols <- names(Hotel_data.cleaned1)[sapply(Hotel_data.cleaned1, is.character)]
+#(Hotel_data.cleaned1[categorical_cols] <- lapply(Hotel_data.cleaned1[categorical_cols], factor))
+#View(Hotel_data.cleaned1)
+
+#numerical_cols <- names(Hotel_data.cleaned1)[sapply(Hotel_data.cleaned1, is.numeric)]
+#(Hotel_data.cleaned1[numerical_cols] <- scale(Hotel_data.cleaned1[numerical_cols]))
+
+```{r}
+library(caret)
+
+set.seed(123)
+trainIndex <- createDataPartition(Hotel_data.cleaned1$is_canceled, p = 0.7, list = FALSE)
+train_data <- Hotel_data.cleaned1[trainIndex, ]
+test_data <- Hotel_data.cleaned1[-trainIndex, ]
+
+table(train_data$is_canceled)/nrow(train_data)
+table(test_data$is_canceled)/nrow(test_data)
+
+# Convert is_canceled to a factor with two levels
+train_data$is_canceled <- as.factor(train_data$is_canceled)
+test_data$is_canceled <- as.factor(test_data$is_canceled)
+
+train_control <- trainControl(method = "cv", number = 5)
+(model <- train(is_canceled ~ adr+is_repeated_guest+lead_time+TOTAL.MEM+previous_cancellations+previous_bookings_not_canceled+assigned_room_type, data = train_data, method = "glm", family = "binomial", trControl = train_control))
+```
+
+
+# Re-run the logistic regression model
+#log_reg_model <- glm(is_canceled ~ adr+is_repeated_guest+lead_time+TOTAL.MEM+previous_cancellations+previous_bookings_not_canceled+assigned_room_type, data = train_data, family = "binomial")
+
+```{r}
+log_reg_model1 <- glm(is_canceled ~ adr+is_repeated_guest+lead_time+previous_cancellations+previous_bookings_not_canceled , data = train_data, family = "binomial")
+```
+
+#log_reg_model2 <- glm(is_canceled ~ adr+is_repeated_guest+previous_cancellations+previous_bookings_not_canceled+assigned_room_type , data = train_data, family = "binomial")
+
+#log_reg_model3 <- glm(is_canceled ~ adr+is_repeated_guest , data = train_data, family = "binomial")
+
+```{r}
+log_reg_model4 <- glm(is_canceled ~ adr+is_repeated_guest+lead_time+assigned_room_type+previous_cancellations+previous_bookings_not_canceled , data = train_data, family = "binomial")
+```
+
+```{r}
+# Check the summary of the model
+#summary(log_reg_model)
+summary(log_reg_model1)
+#summary(log_reg_model2)
+#summary(log_reg_model3)
+summary(log_reg_model4)
+```
+
+#summary(train_data)
+
+
+levels(train_data$assigned_room_type)
+levels(test_data$assigned_room_type)
+
+```{r}
+pred_prob <- predict(log_reg_model1, newdata = test_data, type = "response")
+pred_class <- ifelse(pred_prob > 0.5, 1, 0)
+
+conf_matrix <- confusionMatrix(as.factor(pred_class), as.factor(test_data$is_canceled))
+
+print(conf_matrix)
+```
+
+```{r}
+library(pROC)
+roc_curve <- roc(test_data$is_canceled, pred_prob)
+plot(roc_curve, col = "blue", main = "ROC Curve")
+auc(roc_curve)
+```
+
+```{r}
+library(rpart)
+tree_model <- rpart(is_canceled ~ adr+is_repeated_guest+lead_time+previous_cancellations+previous_bookings_not_canceled, data = train_data, method = "class")
+
+summary(tree_model)
+```
+
+```{r}
+tree_predictions <- predict(tree_model, newdata = test_data, type = "class")
+conf_matrix_tree <- confusionMatrix(tree_predictions, as.factor(test_data$is_canceled))
+
+
+print(conf_matrix_tree)
+```
+
+
+```{r}
+tree_probs <- predict(tree_model, newdata = test_data, type = "prob")[, 2]
+tree_roc <- roc(test_data$is_canceled, tree_probs)
+
+auc(tree_roc)
+
+plot(tree_roc, main = "ROC Curve - Decision Tree", col = "red")
+```
+
+```{r}
+test_data$assigned_room_type <- factor(test_data$assigned_room_type, 
+                                        levels = levels(train_data$assigned_room_type))
+library(rpart)
+tree_model2 <- rpart(is_canceled ~ adr+is_repeated_guest+lead_time+previous_cancellations+previous_bookings_not_canceled+assigned_room_type, data = train_data, method = "class")
+
+summary(tree_model2)
+```
+
+
+```{r}
+tree_predictions2 <- predict(tree_model2, newdata = test_data, type = "class")
+conf_matrix_tree2 <- confusionMatrix(tree_predictions2, as.factor(test_data$is_canceled))
+
+print(conf_matrix_tree)
+```
+
+```{r}
+tree_probs2 <- predict(tree_model2, newdata = test_data, type = "prob")[, 2]
+tree2_roc <- roc(test_data$is_canceled, tree_probs2)
+
+
+auc(tree2_roc)
+```
+
+```{r}
+library(randomForest)
+
+train_data$is_canceled <- as.factor(train_data$is_canceled)
+test_data$is_canceled <- as.factor(test_data$is_canceled)
+
+# Fit the random forest model without the (Intercept)
+rf_model <- randomForest(is_canceled ~ adr+is_repeated_guest+lead_time+previous_cancellations+previous_bookings_not_canceled+assigned_room_type, data = train_data, ntree = 500, mtry = 3)
+
+
+print(rf_model)
+```
+
+
+
+```{r}
+test_data <- Hotel_data.cleaned1[-trainIndex, ]
+
+rf_predictions <- predict(rf_model, newdata = test_data, type = "class")
+conf_matrix_rf <- confusionMatrix(rf_predictions, as.factor(test_data$is_canceled))
+
+print(conf_matrix_rf)
+```
+
+
+```{r}
+varImpPlot(rf_model)
+```
+
+
+##Interpretation of Logistic Regression and Random Forest Models
+##Data Preparation
+#The dataset Hotel_data.cleaned1 was divided into a training set (70%) and a testing set (30%). The target variable, is_canceled, indicates whether a booking was canceled (1) or not (0). The training data revealed a class imbalance, with about 73% of bookings not canceled and 27% canceled.
+
+#Logistic Regression Model
+#This model used predictors like average daily rate (ADR), whether the guest was a repeat customer, lead time, and booking history.
+
+#Key Insights from Coefficients:
+
+#ADR (0.0057): As the daily rate increases, cancellations are slightly more likely.
+#Repeated Guests (-1.0196): Regular customers are less likely to cancel.
+#Lead Time (0.0041): Longer lead times are linked with more cancellations.
+#Previous Cancellations (1.8352): Guests who canceled before are much more likely to cancel again.
+#Previous Bookings Not Canceled (-0.3886): Guests with a history of keeping bookings are less likely to cancel.
+
+#Performance:
+
+#Accuracy: ~73%
+#Strengths: Very good at identifying non-cancellations (98% sensitivity).
+#Weaknesses: Struggles to correctly identify cancellations (8% specificity).
+#ROC-AUC: 0.666 – suggests moderate performance in separating cancellations from non-cancellations.
+
+#Decision Tree Model
+#Using the same predictors, a decision tree was trained to understand cancellation patterns.
+
+#Key Findings:
+
+#Lead Time and Previous Cancellations were the most influential factors.
+#Performance:
+
+#Accuracy: ~73%
+#Strengths: Very strong at identifying non-cancellations (99% sensitivity).
+#Weaknesses: Very poor at identifying cancellations (4% specificity).
+#ROC-AUC: 0.623 – slightly weaker discrimination compared to logistic regression.
+
+#Random Forest Model
+#This ensemble model aimed to improve performance by averaging multiple decision trees.
+
+#Key Insights:
+
+#Lead Time and Previous Cancellations remained the most impactful variables.
+#Performance:
+
+#Accuracy: ~74% – slightly better than logistic regression and decision tree.
+#Sensitivity: 99%, retaining high accuracy for non-cancellations.
+#Specificity: Slightly improved at 9%, though still low.
+
+#Conclusion and Recommendations
+#While all three models provide valuable insights, their tendency to predict non-cancellations more often highlights a key limitation. Specificity remains low, making it difficult to correctly identify cancellations.
+
+#Best Model: The Random Forest model marginally outperformed others in accuracy and sensitivity.
+#Next Steps:
+#Address class imbalance (e.g., oversampling canceled bookings or using class weights).
+#Include additional features or interactions to improve predictive power.
+#Fine-tune hyperparameters in the Random Forest model.
+#These models shed light on what drives cancellations, but further refinement is essential to improve predictions, especially for cancellations.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
